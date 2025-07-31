@@ -1,0 +1,144 @@
+<html>
+  <head>
+    <title>Product Price Comparison</title>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <style>
+      body {
+        font-family: sans-serif;
+        padding: 20px;
+        background-color: #f0f4f8;
+      }
+      h1 {
+        color: #334e68;
+      }
+      td:nth-child(even), th:nth-child(even) {
+        background-color: #D6EEEE;
+      }
+      #prod_dd, #dealers, #pricing {
+        margin: 6mm;
+        padding: 10px;
+        background-color: #ffffff;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      }
+      select {
+        padding: 8px;
+        border-radius: 4px;
+        border: 1px solid #cbd5e0;
+        min-width: 200px;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      table td, table th {
+        border: 1px solid #e2e8f0;
+        padding: 8px;
+        text-align: left;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>
+      Products price comparison
+    </h1>
+    <div style='margin:6mm' id='prod_dd'></div>
+    <div style='margin:6mm' id='dealers'></div>
+    <div style='margin:6mm;font-size: large;' id='pricing'></div>
+    <script>
+      // URLs for the backend services
+      let produrl = "https://prodlist.1yiqeanjsspw.us-south.codeengine.appdomain.cloud/";
+      let dealerurl = "https://dealerdetails.1yiqeanjsspw.us-south.codeengine.appdomain.cloud/";
+
+      // Fetch the list of products and populate the product dropdown
+      axios.get(produrl + "products").then(res => {
+        let selEl = document.createElement("select");
+        selEl.setAttribute("id", "selProd");
+        selEl.setAttribute("onChange", "getDealers()");
+        let defaultOpt = document.createElement("option");
+        defaultOpt.setAttribute('value', "--SELECT--");
+        defaultOpt.innerText = "--SELECT--";
+        selEl.appendChild(defaultOpt);
+
+        res.data.products.forEach(element => {
+          let optEl = document.createElement("option");
+          optEl.setAttribute('value', element);
+          optEl.innerText = element;
+          selEl.appendChild(optEl);
+        });
+
+        let prod = document.getElementById('prod_dd');
+        // Remove existing child nodes before appending the new dropdown
+        prod.childNodes.forEach(node => prod.removeChild(node));
+        prod.appendChild(selEl);
+      });
+
+      // Function to get dealers based on the selected product
+      let getDealers = () => {
+        let valToFetch = document.getElementById("selProd").value;
+
+        if (valToFetch != "--SELECT--") {
+          axios.get(produrl + "getdealers/" + valToFetch).then(res => {
+            let selEl = document.createElement("select");
+            selEl.setAttribute("id", "selDealer");
+            selEl.setAttribute("onChange", "getDealerProductPrice()");
+            let defaultOpt = document.createElement("option");
+            defaultOpt.setAttribute('value', "--SELECT--");
+            defaultOpt.innerText = "--SELECT--";
+            selEl.appendChild(defaultOpt);
+            res.data.dealers.forEach((element) => {
+              let optEl = document.createElement("option");
+              optEl.setAttribute('value', element);
+              optEl.innerText = element;
+              selEl.appendChild(optEl);
+            });
+            let optEl = document.createElement("option");
+            optEl.setAttribute('value', 'All Dealers');
+            optEl.innerText = 'All Dealers';
+            selEl.appendChild(optEl);
+
+            let dealers = document.getElementById('dealers');
+            // Remove existing child nodes before appending the new dropdown
+            dealers.childNodes.forEach(node => dealers.removeChild(node));
+            dealers.appendChild(selEl);
+          });
+        }
+      };
+
+      // Function to get the price based on selected product and dealer
+      let getDealerProductPrice = () => {
+        let prodvalToFetch = document.getElementById("selProd").value;
+        let dealervalToFetch = document.getElementById("selDealer").value;
+
+        let pricingEl = document.getElementById("pricing");
+        // Clear previous pricing information
+        pricingEl.childNodes.forEach(node => pricingEl.removeChild(node));
+
+        if (dealervalToFetch != 'All Dealers' && dealervalToFetch != "--SELECT--") {
+          axios.get(dealerurl + "price/" + dealervalToFetch + "/" + prodvalToFetch).then(res => {
+            pricingEl.innerText = res.data.message;
+          });
+        } else if (dealervalToFetch == 'All Dealers') {
+          axios.get(dealerurl + "allprice/" + prodvalToFetch).then(res => {
+            let table = document.createElement("table");
+
+            // Add table headers
+            let headerRow = document.createElement("tr");
+            headerRow.innerHTML = "<th>Dealer</th><th>Price</th>";
+            table.appendChild(headerRow);
+            
+            res.data.prices.forEach((price) => {
+              let tr = document.createElement("tr");
+              tr.innerHTML = "<td>" + price.key + "</td><td>" + price.value + "</td>";
+              table.appendChild(tr);
+            });
+
+            if (table.hasChildNodes()) {
+              pricingEl.appendChild(table);
+            }
+          });
+        }
+      };
+    </script>
+  </body>
+</html>
